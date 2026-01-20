@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario TI - USMP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --usmp-red: #C01419; --usmp-dark: #333; --usmp-gray: #EFEFEF; --usmp-bg: #F4F6F8; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Montserrat', sans-serif; background-color: var(--usmp-bg); color: var(--usmp-dark); padding: 20px; min-height: 100vh; }
+        
+        .container { max-width: 98%; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; height: 92vh; border-top: 8px solid var(--usmp-red); }
+        
+        header { padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; background: white; }
+        .brand { display: flex; align-items: center; gap: 20px; }
+        .brand img { height: 80px; object-fit: contain; }
+        
+        .header-controls { display: flex; gap: 15px; align-items: center; }
+        #adminPanel { display: none; gap: 15px; align-items: center; }
+
+        .btn-usmp { background: var(--usmp-gray); color: var(--usmp-dark); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: 0.2s; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .btn-usmp:hover { background: var(--usmp-red); color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(192,20,25,0.2); }
+        
+        .btn-clear { background: #666; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 1rem; margin-right: 10px; transition:0.2s; }
+        .btn-clear:hover { background: #444; }
+
+        .btn-logout { background: white; border: 1px solid #ccc; color: #555; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.8rem; margin-left: 10px; }
+        .btn-logout:hover { border-color: var(--usmp-red); color: var(--usmp-red); }
+
+        select.piso-selector { padding: 10px 15px; border-radius: 8px; border: 2px solid #ddd; font-weight: bold; color: var(--usmp-dark); cursor: pointer; outline: none; }
+
+        .search-section { padding: 20px 30px; display: flex; gap: 15px; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
+        .search-input { flex: 1; padding: 12px 25px; border: 2px solid #ddd; border-radius: 50px; outline: none; font-size: 1rem; }
+        .search-input:focus { border-color: var(--usmp-red); background: white; box-shadow: 0 0 0 3px rgba(192,20,25,0.1); }
+
+        .table-container { flex: 1; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 2800px; font-size: 0.8rem; }
+        th { background: var(--usmp-red); color: white; padding: 15px; text-align: left; position: sticky; top: 0; z-index: 10; font-weight: 600; letter-spacing: 0.5px; }
+        td { padding: 12px 15px; border-bottom: 1px solid #e0e0e0; vertical-align: top; line-height: 1.4; }
+        tr:hover { background: #FFF5F5; }
+
+        .badge-piso { background: #333; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; display: inline-block; margin-bottom: 12px; }
+        .hw-block { background: #fdfdfd; border: 1px solid #eee; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; }
+        .hw-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #eee; padding-bottom: 2px; }
+        .hw-row:last-child { border-bottom: none; }
+        .label { font-weight: 800; color: #666; font-size: 0.65rem; text-transform: uppercase; width: 50px; }
+        .val { font-weight: 600; color: #222; text-align: right; flex: 1; }
+        .val-code { color: var(--usmp-red); font-family: 'Consolas', monospace; font-weight: 700; background: #fff0f0; padding: 0 4px; border-radius: 3px; }
+
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-green { background-color: #27ae60; }
+        .status-red { background-color: #c0392b; }
+
+        .comment-cell { font-style: italic; color: #555; background: #f9f9f9; padding: 8px; border-radius: 6px; border: 1px solid #eee; font-size: 0.75rem; max-height: 80px; overflow-y: auto; }
+        .input-error { border: 2px solid #C01419 !important; background-color: #fff0f0; }
+        .error-text { color: #C01419; font-size: 0.7rem; font-weight: bold; display: none; margin-top: 4px; }
+        .input-error + .error-text { display: block; }
+
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
+        .modal-content { background: white; margin: 2vh auto; padding: 0; border-radius: 12px; width: 90%; max-width: 1300px; border-top: 8px solid var(--usmp-red); animation: slideUp 0.3s ease-out; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
+        @keyframes slideUp { from {transform: translateY(30px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+        .modal-header { padding: 20px 40px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 30px 40px; max-height: 75vh; overflow-y: auto; background: #fdfdfd; }
+        
+        .form-section-title { color: #333; border-left: 6px solid var(--usmp-red); padding-left: 15px; margin: 25px 0 15px 0; font-weight: 800; font-size: 1rem; text-transform: uppercase; }
+        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: end; }
+        .form-group label { font-size: 0.75rem; font-weight: 700; margin-bottom: 5px; display: block; color: #555; text-transform: uppercase; }
+        .form-group input, .form-group select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
+        .form-group input:focus, textarea:focus { border-color: var(--usmp-red); outline: none; }
+
+        .peri-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .peri-title { color: var(--usmp-red); font-weight: 800; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: block; margin-bottom: 12px; font-size: 0.9rem; }
+
+        .modal-footer { padding: 20px 40px; background: white; border-top: 1px solid #eee; text-align: right; border-radius: 0 0 12px 12px; }
+        .btn-action { background: white; border: 1px solid #ddd; font-size: 1.1rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 6px; margin-right: 5px; }
+        .btn-action:hover { background-color: #f0f0f0; border-color: #ccc; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="brand">
+            <img src="logo_usmp.jpg" alt="Logo USMP">
+            <div>
+                <h1 style="font-size: 1.5rem; color: var(--usmp-red); font-weight: 800; margin:0;">Inventario TI</h1>
+                <small style="color:#666; font-weight:600;">Sistemas - Rectorado</small>
+                <div id="userInfo" style="margin-top: 5px; font-size:0.8rem; color:var(--usmp-red); font-weight:bold; background:#fff0f0; padding: 2px 8px; border-radius:4px; display:inline-block;"></div>
+            </div>
+        </div>
+        
+        <div class="header-controls">
+            <select id="filtro-piso" class="piso-selector" onchange="cargarEquipos()">
+                <option value="">🏢 Todos los Pisos</option>
+                <option value="9">Piso 9</option>
+                <option value="11">Piso 11</option>
+            </select>
+            <button class="btn-usmp" onclick="exportarExcel()">📊 Exportar</button>
+            <div id="adminPanel">
+                <input type="file" id="fileImport" style="display:none;" onchange="procesarExcel()" accept=".xlsx">
+                <button class="btn-usmp" onclick="document.getElementById('fileImport').click()">📥 Importar</button>
+                <button class="btn-usmp" onclick="abrirModalNuevo()">+ Nuevo</button>
+            </div>
+            <button class="btn-logout" onclick="logout()">Salir</button>
+        </div>
+    </header>
+
+    <div class="search-section">
+        <input type="text" id="busqueda" class="search-input" placeholder="🔍 Buscar por Código, Serie, Usuario, Marca, Modelo...">
+        <button class="btn-usmp" onclick="buscarEquipos()">Buscar</button>
+    </div>
+
+    <div class="table-container">
+        <table id="tabla-equipos">
+            <thead>
+                <tr>
+                    <th width="4%">Est.</th>
+                    <th width="7%">Ubicación</th>
+                    <th width="9%">Usuario</th>
+                    <th width="12%">Equipo Principal</th>
+                    <th width="11%">Componentes</th>
+                    <th width="5%">IP</th>
+                    <th width="12%">Monitor</th>
+                    <th width="12%">Teclado</th>
+                    <th width="12%">Mouse</th>
+                    <th width="10%">Observaciones</th> 
+                    <th width="6%" style="text-align: center;">Acción</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalForm" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Nuevo Activo</h2>
+            <span style="font-size:30px; cursor:pointer; color:#999;" onclick="cerrarModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="form-inventario">
+                <input type="hidden" name="id" id="equipoId">
+                
+                <div class="form-section-title">1. Estado y Ubicación</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>Estado</label><select name="estado" id="inputEstado" style="font-weight:bold; border: 2px solid #ddd;"><option value="operativo" style="color:green;">🟢 Operativo</option><option value="baja" style="color:red;">🔴 De Baja</option></select></div>
+                    <div class="form-group"><label>Piso</label><select name="piso"><option value="9">Piso 9</option><option value="11">Piso 11</option></select></div>
+                    <div class="form-group"><label>Área</label><input type="text" name="area"></div>
+                    
+                    <div class="form-group">
+                        <label>Usuario (User)</label>
+                        <input type="text" name="usuario_user" oninput="validarTextoOnly(this)">
+                        <span class="error-text">⚠️ Solo letras permitidas</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombres</label>
+                        <input type="text" name="usuario_nombre" oninput="validarTextoOnly(this)">
+                        <span class="error-text">⚠️ Solo letras permitidas</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Apellidos</label>
+                        <input type="text" name="usuario_apellido" oninput="validarTextoOnly(this)">
+                        <span class="error-text">⚠️ Solo letras permitidas</span>
+                    </div>
+                </div>
+
+                <div class="form-section-title">2. Equipo Principal</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>Hostname</label><input type="text" name="equipo_nombre_pc"></div>
+                    <div class="form-group"><label>Marca</label><input type="text" name="equipo_marca" value="HP"></div>
+                    
+                    <div class="form-group">
+                        <label>Modelo</label>
+                        <input type="text" name="equipo_modelo" id="inputModelo" oninput="autocompletarSpecs(this)">
+                    </div>
+                    
+                    <div class="form-group"><label>Serie</label><input type="text" name="equipo_serie"></div>
+                    
+                    <div class="form-group">
+                        <label style="color:var(--usmp-red);">★ C. Barras CPU</label>
+                        <input type="text" name="equipo_c_barras" required style="border:2px solid #ffd0d0;" oninput="validarNumeros6(this)">
+                        <span class="error-text">⚠️ Deben ser 6 números exactos</span>
+                    </div>
+                    
+                    <div class="form-group"><label>IP</label><input type="text" name="ip"></div>
+                    
+                    <div class="form-group"><label>Procesador</label><input type="text" name="procesador_nombre" id="inputProcesador"></div>
+                    <div class="form-group"><label>RAM</label><input type="text" name="ram_total" id="inputRam" onblur="formatearRam(this)"></div>
+                    <div class="form-group"><label>Disco</label><input type="text" name="disco_capacidad" id="inputDisco"></div>
+                    
+                    <div class="form-group"><label style="font-weight:bold; color:#C01419;">Tarjeta Video</label><input type="text" name="tarjeta_video" id="inputVideo"></div>
+                </div>
+
+                <div class="form-section-title">3. Periféricos</div>
+                <div class="peri-card">
+                    <span class="peri-title">🖥️ MONITOR</span>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Marca</label><input type="text" name="monitor_marca" value="HP"></div>
+                        <div class="form-group"><label>Modelo</label><input type="text" name="monitor_modelo" value="E223"></div>
+                        <div class="form-group"><label>Serie</label><input type="text" name="monitor_serie"></div>
+                        <div class="form-group">
+                            <label>C. Barras</label>
+                            <input type="text" name="monitor_c_barras" oninput="validarNumeros6(this)">
+                            <span class="error-text">⚠️ 6 números requeridos</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="peri-card">
+                    <span class="peri-title">⌨️ TECLADO</span>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Marca</label><input type="text" name="teclado_marca" value="HP"></div>
+                        <div class="form-group"><label>Modelo</label><input type="text" name="teclado_modelo"></div>
+                        <div class="form-group"><label>Serie</label><input type="text" name="teclado_serie"></div>
+                        <div class="form-group">
+                            <label>C. Barras</label>
+                            <input type="text" name="teclado_c_barras" oninput="validarNumeros6(this)">
+                            <span class="error-text">⚠️ 6 números requeridos</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="peri-card">
+                    <span class="peri-title">🖱️ MOUSE</span>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Marca</label><input type="text" name="mouse_marca" value="HP"></div>
+                        <div class="form-group"><label>Modelo</label><input type="text" name="mouse_modelo"></div>
+                        <div class="form-group"><label>Serie</label><input type="text" name="mouse_serie"></div>
+                        <div class="form-group">
+                            <label>C. Barras</label>
+                            <input type="text" name="mouse_c_barras" oninput="validarNumeros6(this)">
+                            <span class="error-text">⚠️ 6 números requeridos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section-title">4. Comentarios Adicionales</div>
+                <div class="form-group">
+                    <textarea name="comentarios" rows="3" placeholder="Escriba aquí observaciones, detalles adicionales o estado del equipo..."></textarea>
+                </div>
+
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-clear" onclick="limpiarFormulario()">Limpiar</button>
+            <button class="btn-usmp" id="btnGuardar" onclick="guardarEquipo()" style="padding: 12px 40px; font-size:1rem;">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = `http://${window.location.hostname}:3000/api`;
+    const user = sessionStorage.getItem('usmp_user');
+    const rol = sessionStorage.getItem('usmp_rol');
+    let editMode = false;
+    let listaEquiposActual = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if(!user) return window.location.href = 'login.html';
+        document.getElementById('userInfo').textContent = `Conectado: ${user}`;
+        if(rol === 'admin') document.getElementById('adminPanel').style.display = 'flex';
+        cargarEquipos();
+        document.getElementById('busqueda').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') buscarEquipos();
+        });
+    });
+
+    function logout() { sessionStorage.clear(); window.location.href='login.html'; }
+
+    function validarTextoOnly(input) {
+        const regex = /^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]*$/;
+        if (!regex.test(input.value)) { input.classList.add('input-error'); } 
+        else { input.classList.remove('input-error'); }
+    }
+
+    function validarNumeros6(input) {
+        input.value = input.value.replace(/[^0-9]/g, '');
+        if (input.value.length > 0 && input.value.length !== 6) { input.classList.add('input-error'); } 
+        else { input.classList.remove('input-error'); }
+    }
+
+    function formatearRam(input) {
+        let val = input.value.trim().toUpperCase();
+        if (val && !val.includes('GB')) { input.value = val + " GB"; }
+    }
+
+    function autocompletarSpecs(inputModelo) {
+        const modeloBuscado = inputModelo.value.trim().toLowerCase();
+        if(modeloBuscado.length < 3) return;
+        const match = listaEquiposActual.find(eq => eq.equipo_modelo && eq.equipo_modelo.toLowerCase() === modeloBuscado);
+        if(match) {
+            if(!document.getElementById('inputProcesador').value) document.getElementById('inputProcesador').value = match.procesador_nombre || '';
+            if(!document.getElementById('inputRam').value) document.getElementById('inputRam').value = match.ram_total || '';
+            if(!document.getElementById('inputDisco').value) document.getElementById('inputDisco').value = match.disco_capacidad || '';
+            if(!document.getElementById('inputVideo').value) document.getElementById('inputVideo').value = match.tarjeta_video || '';
+        }
+    }
+
+    function validarFormularioAntesDeEnviar() {
+        const errores = document.querySelectorAll('.input-error');
+        if (errores.length > 0) {
+            alert('⚠️ Hay campos con errores (marcados en rojo). Por favor corríjalos antes de guardar.');
+            return false;
+        }
+        return true;
+    }
+
+    function limpiarFormulario() {
+        document.getElementById('form-inventario').reset();
+        document.getElementById('inputEstado').value = 'operativo';
+        document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+    }
+
+    async function cargarEquipos() {
+        const piso = document.getElementById('filtro-piso').value;
+        let url = `${API_URL}/equipos` + (piso ? `?piso=${piso}` : '');
+        try {
+            const res = await fetch(url);
+            const json = await res.json();
+            listaEquiposActual = json.data;
+            renderTabla(listaEquiposActual);
+        } catch(e) { console.error(e); }
+    }
+
+    async function buscarEquipos() {
+        const q = document.getElementById('busqueda').value;
+        if(!q) return cargarEquipos();
+        const res = await fetch(`${API_URL}/buscar?q=${q}`);
+        const json = await res.json();
+        listaEquiposActual = json.data;
+        renderTabla(listaEquiposActual);
+    }
+
+    function renderTabla(data) {
+        const tbody = document.querySelector('#tabla-equipos tbody');
+        tbody.innerHTML = '';
+        if(data.length === 0) return tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:#999;">Sin resultados</td></tr>';
+
+        data.forEach(eq => {
+            const isOp = eq.estado !== 'baja';
+            const statusHtml = isOp 
+                ? `<div style="display:flex; align-items:center;"><span class="status-dot status-green"></span><small style="color:#27ae60; font-weight:bold;">OK</small></div>`
+                : `<div style="display:flex; align-items:center;"><span class="status-dot status-red"></span><small style="color:#c0392b; font-weight:bold;">BAJA</small></div>`;
+
+            let actions = '';
+            if(rol === 'admin') {
+                const dataString = JSON.stringify(eq).replace(/"/g, '&quot;');
+                actions = `
+                    <button class="btn-action" onclick="editarEquipo(${dataString})" title="Editar">✏️</button>
+                    <button class="btn-action" onclick="eliminar(${eq.id})" title="Eliminar" style="color:#c0392b;">🗑️</button>
+                `;
+            } else {
+                actions = `<small style="color:#ccc;">--</small>`;
+            }
+
+            // CORRECCION DE VISUALIZACION MODELO Y VIDEO
+            const hwBlock = `
+                <div class="hw-block">
+                    <div class="hw-row"><span class="label">CPU:</span> <span class="val">${eq.procesador_nombre || '-'}</span></div>
+                    <div class="hw-row"><span class="label">RAM:</span> <span class="val">${eq.ram_total || '-'}</span></div>
+                    <div class="hw-row"><span class="label">HDD:</span> <span class="val">${eq.disco_capacidad || '-'}</span></div>
+                    <div class="hw-row"><span class="label" style="color:#C01419;">VID:</span> <span class="val">${eq.tarjeta_video || '-'}</span></div>
+                </div>`;
+
+            const monitorBlock = `
+                <div class="hw-block">
+                    <div class="hw-row"><span class="label">Marca:</span> <span class="val">${eq.monitor_marca||'-'}</span></div>
+                    <div class="hw-row"><span class="label">Mod:</span> <span class="val">${eq.monitor_modelo||'-'}</span></div>
+                    <div class="hw-row"><span class="label">Serie:</span> <span class="val">${eq.monitor_serie||'-'}</span></div>
+                    <div class="hw-row"><span class="label">CB:</span> <span class="val-code">${eq.monitor_c_barras||'-'}</span></div>
+                </div>`;
+
+            const tecladoBlock = `
+                <div class="hw-block">
+                    <div class="hw-row"><span class="label">Marca:</span> <span class="val">${eq.teclado_marca||'-'}</span></div>
+                    <div class="hw-row"><span class="label">Mod:</span> <span class="val">${eq.teclado_modelo||'-'}</span></div>
+                    <div class="hw-row"><span class="label">Serie:</span> <span class="val">${eq.teclado_serie||'-'}</span></div>
+                    <div class="hw-row"><span class="label">CB:</span> <span class="val-code">${eq.teclado_c_barras||'-'}</span></div>
+                </div>`;
+
+            const mouseBlock = `
+                <div class="hw-block">
+                    <div class="hw-row"><span class="label">Marca:</span> <span class="val">${eq.mouse_marca||'-'}</span></div>
+                    <div class="hw-row"><span class="label">Mod:</span> <span class="val">${eq.mouse_modelo||'-'}</span></div>
+                    <div class="hw-row"><span class="label">Serie:</span> <span class="val">${eq.mouse_serie||'-'}</span></div>
+                    <div class="hw-row"><span class="label">CB:</span> <span class="val-code">${eq.mouse_c_barras||'-'}</span></div>
+                </div>`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${statusHtml}</td>
+                <td>
+                    <span class="badge-piso">Piso ${eq.piso}</span><br>
+                    <span style="font-weight:600; font-size:0.8rem;">${eq.area||'-'}</span>
+                </td>
+                <td>
+                    <span style="font-weight:700; color:#333;">${eq.usuario_user||'--'}</span><br>
+                    <small style="color:#666">${eq.usuario_nombre||''} ${eq.usuario_apellido||''}</small>
+                </td>
+                <td>
+                    <div class="hw-block">
+                        <div class="hw-row"><span class="label">PC:</span> <span class="val">${eq.equipo_nombre_pc||'-'}</span></div>
+                        <div class="hw-row"><span class="label">Marca:</span> <span class="val">${eq.equipo_marca}</span></div>
+                        <div class="hw-row"><span class="label">Mod:</span> <span class="val">${eq.equipo_modelo}</span></div>
+                        <div class="hw-row"><span class="label">Serie:</span> <span class="val">${eq.equipo_serie}</span></div>
+                        <div class="hw-row"><span class="label">CB:</span> <span class="val-code">${eq.equipo_c_barras}</span></div>
+                    </div>
+                </td>
+                <td>${hwBlock}</td>
+                <td style="font-size:0.8rem;">${eq.ip||'-'}</td>
+                <td>${monitorBlock}</td>
+                <td>${tecladoBlock}</td>
+                <td>${mouseBlock}</td>
+                
+                <td>
+                    <div class="comment-cell">
+                        ${eq.comentarios || '<span style="color:#ccc">--</span>'}
+                    </div>
+                </td>
+
+                <td style="text-align:center;">${actions}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function abrirModalNuevo() {
+        editMode = false;
+        limpiarFormulario();
+        document.getElementById('equipoId').value = '';
+        document.getElementById('modalTitle').textContent = "Nuevo Activo";
+        document.getElementById('btnGuardar').textContent = "Guardar";
+        document.getElementById('modalForm').style.display = 'block';
+    }
+
+    function editarEquipo(eq) {
+        editMode = true;
+        limpiarFormulario();
+        document.getElementById('modalTitle').textContent = "Editar Activo";
+        document.getElementById('btnGuardar').textContent = "Actualizar";
+        
+        const form = document.getElementById('form-inventario');
+        for (const key in eq) {
+            if (form.elements[key]) form.elements[key].value = eq[key];
+        }
+        if(!eq.estado) form.elements['estado'].value = 'operativo';
+        document.getElementById('modalForm').style.display = 'block';
+    }
+
+    function cerrarModal() { document.getElementById('modalForm').style.display = 'none'; }
+
+    async function guardarEquipo() {
+        if(!validarFormularioAntesDeEnviar()) return;
+
+        const form = document.getElementById('form-inventario');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const method = editMode ? 'PUT' : 'POST';
+        const url = editMode ? `${API_URL}/equipos/${data.id}` : `${API_URL}/equipos`;
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                alert(editMode ? '✅ Actualizado' : '✅ Guardado');
+                cerrarModal();
+                cargarEquipos();
+            } else { alert('Error al guardar'); }
+        } catch(e) { alert('Error de conexión'); }
+    }
+
+    async function eliminar(id) {
+        if(!confirm('¿Seguro de eliminar este registro permanentemente?')) return;
+        await fetch(`${API_URL}/equipos/${id}`, { method: 'DELETE' });
+        cargarEquipos();
+    }
+
+    function exportarExcel() {
+        if(listaEquiposActual.length === 0) { alert("No hay datos para exportar"); return; }
+
+        const datosLimpios = listaEquiposActual.map(item => ({
+            "estado": item.estado,
+            "piso": item.piso,
+            "area": item.area,
+            "usuario_user": item.usuario_user,
+            "usuario_nombre": item.usuario_nombre,
+            "usuario_apellido": item.usuario_apellido,
+            "equipo_nombre_pc": item.equipo_nombre_pc,
+            "equipo_marca": item.equipo_marca,
+            "equipo_modelo": item.equipo_modelo,
+            "equipo_serie": item.equipo_serie,
+            "equipo_c_barras": item.equipo_c_barras,
+            "ip": item.ip,
+            "procesador_nombre": item.procesador_nombre,
+            "ram_total": item.ram_total,
+            "disco_capacidad": item.disco_capacidad,
+            "tarjeta_video": item.tarjeta_video, // NUEVO
+            "monitor_marca": item.monitor_marca,
+            "monitor_modelo": item.monitor_modelo,
+            "monitor_serie": item.monitor_serie,
+            "monitor_c_barras": item.monitor_c_barras,
+            "teclado_marca": item.teclado_marca,
+            "teclado_modelo": item.teclado_modelo,
+            "teclado_serie": item.teclado_serie,
+            "teclado_c_barras": item.teclado_c_barras,
+            "mouse_marca": item.mouse_marca,
+            "mouse_modelo": item.mouse_modelo,
+            "mouse_serie": item.mouse_serie,
+            "mouse_c_barras": item.mouse_c_barras,
+            "comentarios": item.comentarios
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(datosLimpios);
+        const wscols = Object.keys(datosLimpios[0]).map(() => ({wch: 20}));
+        ws['!cols'] = wscols;
+        XLSX.utils.book_append_sheet(wb, ws, "Inventario USMP");
+        const fecha = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, `Inventario_USMP_${fecha}.xlsx`);
+    }
+
+    async function procesarExcel() {
+        const file = document.getElementById('fileImport').files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const wb = XLSX.read(e.target.result, {type:'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            if(confirm(`Importar ${json.length} registros?`)) {
+                const res = await fetch(`${API_URL}/importar`, {
+                    method:'POST', 
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify(json)
+                });
+                alert('Importación completada');
+                cargarEquipos();
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        document.getElementById('fileImport').value = '';
+    }
+</script>
+</body>
+</html>

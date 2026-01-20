@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso USMP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background: #F4F6F8; 
+            font-family: 'Montserrat', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .card { 
+            background: white; 
+            padding: 50px 40px; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08); 
+            width: 100%; 
+            max-width: 480px; /* MÁS ANCHO */
+            text-align: center; 
+            border-top: 10px solid #C01419; 
+        }
+        .card img { 
+            height: 180px; /* LOGO MÁS GRANDE */
+            margin-bottom: 1px; 
+            object-fit: contain;
+        }
+        h3 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        input { 
+            width: 100%; 
+            padding: 18px 25px; /* INPUTS MÁS GRANDES */
+            margin: 12px 0; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 50px; 
+            outline: none; 
+            box-sizing: border-box; 
+            font-size: 1.1rem;
+            transition: 0.3s;
+        }
+        input:focus { 
+            border-color: #C01419; 
+            box-shadow: 0 0 0 4px rgba(192, 20, 25, 0.1);
+        }
+        button { 
+            width: 100%; 
+            padding: 18px; 
+            background: #C01419; 
+            color: white; 
+            border: none; 
+            border-radius: 50px; 
+            font-weight: 800; 
+            font-size: 1.1rem;
+            cursor: pointer; 
+            margin-top: 20px; 
+            transition: 0.2s;
+            box-shadow: 0 5px 15px rgba(192, 20, 25, 0.3);
+        }
+        button:hover { 
+            background: #a01115; 
+            transform: translateY(-2px);
+        }
+        .error {
+            background: #ffe6e6;
+            color: #c0392b;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="logo_usmp.jpg" alt="Logo USMP">
+        <h3>Sistema de Inventario</h3>
+        <input type="text" id="user" placeholder="Usuario Institucional">
+        <input type="password" id="pass" placeholder="Contraseña">
+        <button onclick="login()">INGRESAR AL SISTEMA</button>
+        <p id="error" class="error">Credenciales incorrectas. Intente nuevamente.</p>
+    </div>
+    <script>
+        const API_URL = `http://10.15.1.194:3000/api`;
+        document.getElementById('pass').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+        async function login() {
+            const u = document.getElementById('user').value;
+            const p = document.getElementById('pass').value;
+            try {
+                const res = await fetch(`${API_URL}/login`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({username: u, password: p})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    sessionStorage.setItem('usmp_user', data.username);
+                    sessionStorage.setItem('usmp_rol', data.rol);
+                    window.location.href = 'index.html';
+                } else {
+                    document.getElementById('error').style.display = 'block';
+                }
+            } catch(e) { alert('Error de conexión'); }
+        }
+    </script>
+</body>
+</html>
